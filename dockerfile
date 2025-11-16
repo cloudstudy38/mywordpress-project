@@ -1,5 +1,17 @@
-FROM wordpress:php8.2-apache
-
-RUN docker-php-ext-install mysqli
-
-COPY wp-config.php /var/www/html/wp-config.php
+wordpress-project/
+│
+├── wordpress/                  # WordPress source or custom WP config
+│
+├── docker/ 
+│   ├── Dockerfile              # Containerization
+│   ├── wp-config.php           # Config file template
+│
+├── cloudformation/
+│   ├── wordpress-ec2.yml       # EC2 + RDS deployment template
+│   ├── wordpress-ecs.yml       # ECS alternative
+│
+├── springboot-monitoring/
+│   ├── src/...                 # Spring Boot monitoring service
+│   ├── pom.xml
+│
+└── Jenkinsfile                 # Jenkins pipeline
