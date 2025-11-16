@@ -1,0 +1,66 @@
+pipeline {
+    agent any
+
+    environment {
+        AWS_REGION = "us-east-1"
+        ECR_REPO = "your-account-id.dkr.ecr.us-east-1.amazonaws.com/wordpress"
+        IMAGE_TAG = "${env.BUILD_NUMBER}"
+        STACK_NAME = "wordpress-prod"
+        TEMPLATE = "cloudformation/wordpress-ec2.yml"
+        AWS_CREDS = credentials('aws-jenkins-creds')
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git url: 'https://github.com/YOUR_USERNAME/wordpress-automation-project.git'
+            }
+        }
+
+        stage('Build Docker Image') {
+            steps {
+                sh """
+                docker build -t wordpress .
+                docker tag wordpress:latest ${ECR_REPO}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Push to ECR') {
+            steps {
+                sh """
+                aws ecr get-login-password --region ${AWS_REGION} | \
+                docker login --username AWS --password-stdin ${ECR_REPO}
+
+                docker push ${ECR_REPO}:${IMAGE_TAG}
+                """
+            }
+        }
+
+        stage('Deploy CloudFormation') {
+            steps {
+                sh """
+                aws cloudformation deploy \
+                --stack-name ${STACK_NAME} \
+                --template-file ${TEMPLATE} \
+                --capabilities CAPABILITY_IAM CAPABILITY_NAMED_IAM \
+                --parameter-overrides \
+                    ImageTag=${IMAGE_TAG} \
+                    DBUser=admin \
+                    DBPassword=YourStrongPassword \
+                    InstanceType=t2.micro
+                """
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "Deployment Success!"
+        }
+        failure {
+            echo "Deployment Failed!"
+        }
+    }
+}
